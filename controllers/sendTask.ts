@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import moment from 'moment-timezone';
 import { Response, Request, NextFunction } from "express";
 import { markTaskAsCompleted } from "../services/markTaskCompleted";
+import stateManager from "./stateManager"; // import the singleton state manager
 
 dotenv.config({ path: ".env" });
 
@@ -11,12 +12,18 @@ const clientKey: string = process.env.APIKEY as string;
 
 //TODO: submit comming two time.
 const sendTask = async (req: Request, res: Response, next: NextFunction) => {
+
   try {
     // Extract body params
     const tasks = req.body;  // Assuming req.body is an array of tasks
-
     //Iterate over each task in the array and process them
     const responses = await Promise.all(tasks.map(async (task: any) => {
+      
+      //Check and send 409 status if there is any gyapan flow going on.
+      if (stateManager.isGyapanInQueue(task.phoneNumber)) {
+        return res.status(409).json({ message: "A Gyapan is currently being processed. Please wait." });
+      }
+
       console.log("Session msg", task);
       if (!processedMessageIds.includes(task.gyapanId)) {
         //store processed msgs for non repitative msgs.

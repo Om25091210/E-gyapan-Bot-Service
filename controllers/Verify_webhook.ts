@@ -5,8 +5,7 @@ const sdk = require("api")("@gupshup/v1.0#ezpvim9lcyhvffa");
 import axios from "axios";
 import { submitTaskForApproval } from '../services/submitTaskForApproval';
 const sdk_read = require('api')('@gupshup/v1.0#52yl2v10lk9hvls9');
-
-
+import stateManager from "./stateManager"; // import the singleton state manager
 require("dotenv").config();
 import sendTask from "./sendTask";
 import { getAllOptInUsers } from "./Check_User_Opt_In";
@@ -14,7 +13,6 @@ import { getPendingListForBot } from "../services/pendingListForBot";
 import { markTaskAsCompleted } from "../services/markTaskCompleted";
 
 const processedMessageIds: string[] = [];
-const currentGyapanIdInQueue: string[] = [];
 const store_gyapan_url_and_name: string[] = [];
 const clientKey: string = process.env.APIKEY as string;
 //constants for sending consent template.
@@ -28,7 +26,8 @@ const axiosConfig = {
 
 const verify = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body.payload;
-  console.log(payload);
+  const phoneNumber = payload?.source;
+  console.log("Phone - "+phoneNumber);
   if (payload && payload.type === "sandbox-start") {
     // Return an empty response with HTTP_SUCCESS (2xx) status code
     res.status(200).send("");
@@ -40,7 +39,6 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
     }, 500);
   } else {
       try {
-        console.log(payload.id);
         markAsSeen(payload?.id);
         if (!processedMessageIds.includes(payload?.id)) {
             //store processed msgs for non repitative msgs.
@@ -53,28 +51,24 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
               //For submit button
               if(payload.payload?.title === 'Submit'){
                 //Search in Task collection for such ID.
-                if(currentGyapanIdInQueue.length!=1){
-                  //push to array for having a one session at one time for gyapan.  
-                  currentGyapanIdInQueue.push(id);
-                  res.status(200).send(`कृपया अपना प्रतिवेदन यहां अपलोड करें | *Gyapan ID/Case ID - ${id}*`);
+                if (!stateManager.isGyapanInQueue(phoneNumber)) {
+                  //push to state array for having a one session at one time for gyapan.  
+                  stateManager.addToCurrentGyapanIdInQueue(phoneNumber,id);
+                  console.log("ID" + id);
+                  res.status(200).send(`कृपया अपना प्रतिवेदन यहां अपलोड करें | *Gyapan ID/Case ID - ${stateManager.getCurrentGyapanIdInQueue(phoneNumber)}*`);
                 }
               }
-              console.log("The title here -" + payload.payload?.title);
               //For Yes button
               if(payload.payload?.title === 'हाँ'){
-                console.log(payload.payload?.title);
-                console.log(currentGyapanIdInQueue.length);
-                console.log(store_gyapan_url_and_name.length);
                 //Search in Task collection for such ID.
-                if(currentGyapanIdInQueue.length==1 && store_gyapan_url_and_name.length!=0){
+                if(stateManager.isGyapanInQueue(phoneNumber) && store_gyapan_url_and_name.length!=0){
                   
-                  const gyapanId = currentGyapanIdInQueue[0].split("/")[0];
+                  const gyapanId = stateManager.getCurrentGyapanIdInQueue(phoneNumber)?.split("/")[0];
                   //Mark that gyapan as sent - so that next time we do not share it again. 
                   const gyapan_id = {
                     "gyapanIds":[gyapanId]
                   };
-                  console.log("gyapan_id here.");
-                  console.log(gyapan_id);
+                  
                   await markTaskAsCompleted(gyapan_id).then((res_)=>{
                     if(res_.code==200){
                       console.log("Gyapan marked Successfully!!.");
@@ -83,7 +77,7 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
                     }
                   })
                   //reset
-                  currentGyapanIdInQueue.length=0;
+                  stateManager.clearCurrentGyapanIdInQueue(phoneNumber);
                   store_gyapan_url_and_name.length=0;
 
                   //TODO: Send it to the Prativedan API.
@@ -93,7 +87,7 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
               }
               if (payload.payload?.title === 'पुनः भेजें') {
                 // Check if there is a Gyapan ID in the queue and some data stored
-                if (currentGyapanIdInQueue.length == 1 && store_gyapan_url_and_name.length != 0) {
+                if (stateManager.isGyapanInQueue(phoneNumber) && store_gyapan_url_and_name.length != 0) {
                   
                   // Reset the store_gyapan_url_and_name array
                   store_gyapan_url_and_name.length = 0; // or store_gyapan_url_and_name = [];
@@ -102,7 +96,7 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
                   console.log("store_gyapan_url_and_name has been reset.");
               
                   // Prompt the user to re-upload the file
-                  res.status(200).send(`कृपया अपना प्रतिवेदन यहां अपलोड करें | *Gyapan ID/Case ID - ${currentGyapanIdInQueue[0]}*`);
+                  res.status(200).send(`कृपया अपना प्रतिवेदन यहां अपलोड करें | *Gyapan ID/Case ID - ${stateManager.getCurrentGyapanIdInQueue(phoneNumber)}*`);
                 }
               }
               
@@ -116,7 +110,7 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
                     //TODO: Notify that there is not pending task.
                     res.status(200).send("No pending Gyapan now!!");
                   }else{
-                      console.log(res_.result);
+                      //console.log(res_.result);
                     console.log("Pending Task found and sent Successfully!!");
                   }
                 }else{
@@ -124,11 +118,7 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
                 }
               })
             }
-            if(currentGyapanIdInQueue.length==1 && payload?.payload?.url && store_gyapan_url_and_name.length==0){
-              //important for showing
-              const task_id = {
-                "ids":[currentGyapanIdInQueue[0]]
-              };
+            if(stateManager.isGyapanInQueue(phoneNumber) && payload?.payload?.url && store_gyapan_url_and_name.length==0){
               //extract the response here!!
               const name = payload?.payload?.name;
               const url = payload?.payload?.url;
@@ -136,8 +126,7 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
               store_gyapan_url_and_name.push(name);
               store_gyapan_url_and_name.push(url);
               //console the result to debug
-              console.log(store_gyapan_url_and_name[0]);
-              console.log(store_gyapan_url_and_name[1]);
+              console.log("STATE "+stateManager.getCurrentGyapanIdInQueue(phoneNumber));
               
               //number to send
               const to=payload?.source;
@@ -149,10 +138,10 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
                   "url":url,
                   "text":`मैं इस दस्तावेज़ को भेजने की पुष्टि करता हूँ ?`,
                   "filename":"PDF file",
-                  "caption": `${currentGyapanIdInQueue[0]}`,
+                  "caption": `${stateManager.getCurrentGyapanIdInQueue(phoneNumber)}`,
                 },
                 "type": "quick_reply",
-                "msgid": `${currentGyapanIdInQueue[0]}`,
+                "msgid": `${stateManager.getCurrentGyapanIdInQueue(phoneNumber)}`,
                 "options": [{ "type": "text", "title": "हाँ" },{ "type": "text", "title": "पुनः भेजें" }]
               }
               const postData = {
