@@ -3,7 +3,7 @@ import msgData from "../interfaces/msgData";
 import transcribeAudioFromURL from "./transcription";
 const sdk = require("api")("@gupshup/v1.0#ezpvim9lcyhvffa");
 import axios from "axios";
-import { submitTaskForApproval } from '../services/submitTaskForApproval';
+import { submitPrativedan } from '../services/submitPrativedan';
 const sdk_read = require('api')('@gupshup/v1.0#52yl2v10lk9hvls9');
 import stateManager from "./stateManager"; // import the singleton state manager
 require("dotenv").config();
@@ -11,9 +11,10 @@ import sendTask from "./sendTask";
 import { getAllOptInUsers } from "./Check_User_Opt_In";
 import { getPendingListForBot } from "../services/pendingListForBot";
 import { markTaskAsCompleted } from "../services/markTaskCompleted";
+import { now } from "moment";
 
 const processedMessageIds: string[] = [];
-const store_gyapan_url_and_name: string[] = [];
+const store_gyapan_url_and_name: { [phoneNumber: string]: string[] } = {};
 const clientKey: string = process.env.APIKEY as string;
 //constants for sending consent template.
 const sourceName = "Egyapaan";
@@ -27,7 +28,7 @@ const axiosConfig = {
 const verify = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body.payload;
   const phoneNumber = payload?.source;
-  console.log("Phone - "+phoneNumber);
+  console.log(payload);
   if (payload && payload.type === "sandbox-start") {
     // Return an empty response with HTTP_SUCCESS (2xx) status code
     res.status(200).send("");
@@ -54,14 +55,14 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
                 if (!stateManager.isGyapanInQueue(phoneNumber)) {
                   //push to state array for having a one session at one time for gyapan.  
                   stateManager.addToCurrentGyapanIdInQueue(phoneNumber,id);
-                  console.log("ID" + id);
+                  store_gyapan_url_and_name[phoneNumber] = [];
                   res.status(200).send(`कृपया अपना प्रतिवेदन यहां अपलोड करें | *Gyapan ID/Case ID - ${stateManager.getCurrentGyapanIdInQueue(phoneNumber)}*`);
                 }
               }
               //For Yes button
               if(payload.payload?.title === 'हाँ'){
                 //Search in Task collection for such ID.
-                if(stateManager.isGyapanInQueue(phoneNumber) && store_gyapan_url_and_name.length!=0){
+                if(stateManager.isGyapanInQueue(phoneNumber) && store_gyapan_url_and_name[phoneNumber].length != 0){
                   
                   const gyapanId = stateManager.getCurrentGyapanIdInQueue(phoneNumber)?.split("/")[0];
                   //Mark that gyapan as sent - so that next time we do not share it again. 
@@ -76,21 +77,37 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
                       console.log("Message failed to mark!!.");
                     }
                   })
-                  //reset
-                  stateManager.clearCurrentGyapanIdInQueue(phoneNumber);
-                  store_gyapan_url_and_name.length=0;
+                  
 
                   //TODO: Send it to the Prativedan API.
+                  const prativedan = {
+                    "gyapanId"      : gyapanId,
+                    "prativedanUrl" : store_gyapan_url_and_name[phoneNumber][1], //[0] is for name of the file and [1] is for URL.
+                    "submittedAt"   : new Date()
+                  };
+
+                  await submitPrativedan(prativedan).then((res_)=>{
+                    if(res_.code==200){
+                      console.log("Prativedan submitted Successfully!!.");
+                    }else{
+                      console.log("Prativedan Message failed to submit!!.");
+                    }
+                  })
+
+                  //reset
+                  stateManager.clearCurrentGyapanIdInQueue(phoneNumber);
+                  store_gyapan_url_and_name[phoneNumber] = [];
+
                   res.status(200).send(`प्रतिवेदन सफलतापूर्वक सबमिट किया गया | *Gyapan ID/Case ID - ${id}*`);
                 
                 }
               }
               if (payload.payload?.title === 'पुनः भेजें') {
                 // Check if there is a Gyapan ID in the queue and some data stored
-                if (stateManager.isGyapanInQueue(phoneNumber) && store_gyapan_url_and_name.length != 0) {
+                if (stateManager.isGyapanInQueue(phoneNumber) && store_gyapan_url_and_name[phoneNumber].length != 0) {
                   
                   // Reset the store_gyapan_url_and_name array
-                  store_gyapan_url_and_name.length = 0; // or store_gyapan_url_and_name = [];
+                  store_gyapan_url_and_name[phoneNumber] = []; // or store_gyapan_url_and_name = [];
               
                   // Log the reset action for debugging
                   console.log("store_gyapan_url_and_name has been reset.");
@@ -118,13 +135,23 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
                 }
               })
             }
-            if(stateManager.isGyapanInQueue(phoneNumber) && payload?.payload?.url && store_gyapan_url_and_name.length==0){
+
+            if(phoneNumber != undefined){
+              console.log("object "
+                + stateManager.isGyapanInQueue(phoneNumber)
+                + payload?.payload?.url);
+                console.log("object2");
+                console.log(store_gyapan_url_and_name[phoneNumber]);
+            }
+            
+            if(stateManager.isGyapanInQueue(phoneNumber) && payload?.payload?.url && store_gyapan_url_and_name[phoneNumber].length ==0){
               //extract the response here!!
               const name = payload?.payload?.name;
               const url = payload?.payload?.url;
     
-              store_gyapan_url_and_name.push(name);
-              store_gyapan_url_and_name.push(url);
+              store_gyapan_url_and_name[phoneNumber].push(name);
+              store_gyapan_url_and_name[phoneNumber].push(url);
+
               //console the result to debug
               console.log("STATE "+stateManager.getCurrentGyapanIdInQueue(phoneNumber));
               
