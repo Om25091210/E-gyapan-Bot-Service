@@ -30,11 +30,6 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body.payload;
   const phoneNumber = payload?.source;
 
-  if (!phoneNumber) {
-    console.log("No phone number found in payload");
-    return res.status(400).send("Invalid request");
-  }
-
   if (payload && payload.type === "sandbox-start") {
     acknowledgeSandboxStart(res);
   } else {

@@ -35,10 +35,6 @@ const axiosConfig = {
 const verify = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const payload = req.body.payload;
     const phoneNumber = payload === null || payload === void 0 ? void 0 : payload.source;
-    if (!phoneNumber) {
-        console.log("No phone number found in payload");
-        return res.status(400).send("Invalid request");
-    }
     if (payload && payload.type === "sandbox-start") {
         acknowledgeSandboxStart(res);
     }
