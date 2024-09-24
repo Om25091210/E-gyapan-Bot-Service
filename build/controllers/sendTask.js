@@ -34,7 +34,7 @@ const sendTask = (req, res, next) => __awaiter(void 0, void 0, void 0, function*
                 //store processed msgs for non repitative msgs.
                 processedMessageIds.push(task.gyapanId);
                 //Send WhatsApp message if not sent previously
-                yield send_session_msg(task.phoneNumber, task.gyapanId, task.caseId, task.deadline, task.category, task.remark, task.attachment);
+                yield send_session_msg(task.id, task.phoneNumber, task.gyapanId, task.caseId, task.deadline, task.category, task.remark, task.attachment, task.tehsil, task.patwari, task.village);
                 // Return some result structure that fits your needs
                 return { task_id: task.task_id, message: "Message sent successfully", sent: true };
             }
@@ -47,10 +47,10 @@ const sendTask = (req, res, next) => __awaiter(void 0, void 0, void 0, function*
         next(error); // Pass error to Express error handler
     }
 });
-function send_session_msg(to, gyapanId, caseId, date_of_task, category, remark, url) {
+function send_session_msg(id, to, gyapanId, caseId, date_of_task, category, remark, url, tehsil, patwari, village) {
     return __awaiter(this, void 0, void 0, function* () {
         const sourceName = "Egyapaan";
-        console.log("The gyapan id sending now is - " + gyapanId);
+        console.log("The gyapan id sending now is - " + gyapanId + " objID " + id);
         const axiosConfig = {
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -58,20 +58,17 @@ function send_session_msg(to, gyapanId, caseId, date_of_task, category, remark, 
             },
         };
         const formattedDate = formatTaskDate(date_of_task);
-        console.log(formattedDate);
-        console.log(url === null || url === void 0 ? void 0 : url.includes("pdf"));
-        console.log(url);
         let message;
         message = {
             "content": {
                 "type": "file",
                 "url": url,
-                "text": `${category} :\n ${remark}`,
+                "text": `पटवारी नाम : *${patwari}*\nज्ञापन क्रमांक : *${gyapanId}*\nकेस क्रमांक : *${caseId}*\nतहसील : *${tehsil}*\nग्राम : *${village}*\nकार्य प्रकार : *${category}*\nअंतिम जमा तिथि : *${formattedDate}*\n\nकृपया तय समय सीमा के भीतर प्रतिवेदन जमा करें  \n\nरिमार्क : *${remark}*`,
                 "filename": "PDF file",
                 "caption": `${formattedDate}`,
             },
             "type": "quick_reply",
-            "msgid": `${gyapanId}/${caseId}`,
+            "msgid": `${gyapanId}/${caseId}/${id}`,
             "options": [{ "type": "text", "title": "Submit" }]
         };
         if (to.length === 10) {

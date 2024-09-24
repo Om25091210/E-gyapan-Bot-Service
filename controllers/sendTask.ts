@@ -30,13 +30,17 @@ const sendTask = async (req: Request, res: Response, next: NextFunction) => {
         processedMessageIds.push(task.gyapanId);
         //Send WhatsApp message if not sent previously
         await send_session_msg(
+          task.id,
           task.phoneNumber,
           task.gyapanId,
           task.caseId,
           task.deadline,
           task.category,
           task.remark,
-          task.attachment
+          task.attachment,
+          task.tehsil,
+          task.patwari,
+          task.village
         );
 
         // Return some result structure that fits your needs
@@ -54,9 +58,13 @@ const sendTask = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 
-async function send_session_msg(to: string, gyapanId: string, caseId:string, date_of_task: Date, category?: string, remark?: string, url?: string) {
+async function send_session_msg(id: string, to: string, 
+                                gyapanId: string, caseId:string,
+                                date_of_task: Date, category?: string,
+                                remark?: string, url?: string,
+                                tehsil?: string, patwari?: string, village?: string ) {
   const sourceName = "Egyapaan";
-  console.log("The gyapan id sending now is - "+gyapanId);
+  console.log("The gyapan id sending now is - "+gyapanId +" objID "+ id);
   const axiosConfig = {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -64,20 +72,18 @@ async function send_session_msg(to: string, gyapanId: string, caseId:string, dat
     },
   };
   const formattedDate = formatTaskDate(date_of_task);
-  console.log(formattedDate);
-  console.log(url?.includes("pdf"));
-  console.log(url);
+
   let message;
   message={
     "content":{
       "type":"file",
       "url":url,
-      "text":`${category} :\n ${remark}`,
+      "text":`पटवारी नाम : *${patwari}*\nज्ञापन क्रमांक : *${gyapanId}*\nकेस क्रमांक : *${caseId}*\nतहसील : *${tehsil}*\nग्राम : *${village}*\nकार्य प्रकार : *${category}*\nअंतिम जमा तिथि : *${formattedDate}*\n\nकृपया तय समय सीमा के भीतर प्रतिवेदन जमा करें  \n\nरिमार्क : *${remark}*`,
       "filename":"PDF file",
       "caption": `${formattedDate}`,
     },
     "type": "quick_reply",
-    "msgid": `${gyapanId}/${caseId}`,
+    "msgid": `${gyapanId}/${caseId}/${id}`,
     "options": [{ "type": "text", "title": "Submit" }]
   }
 
