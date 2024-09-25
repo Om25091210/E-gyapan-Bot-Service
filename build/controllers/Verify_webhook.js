@@ -48,18 +48,22 @@ const acknowledgeSandboxStart = (res) => {
 };
 // Main handler for message processing
 const handleMessageProcessing = (payload, phoneNumber, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c;
+    var _a, _b, _c, _d, _e;
     try {
         markAsSeen(payload === null || payload === void 0 ? void 0 : payload.id);
+        console.log("LOGS");
+        console.log(stateManager_1.default.isGyapanInQueue(phoneNumber));
+        console.log((_a = store_gyapan_url_and_name[phoneNumber]) === null || _a === void 0 ? void 0 : _a.length);
+        console.log((_b = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _b === void 0 ? void 0 : _b.url);
         if (!processedMessageIds.includes(payload === null || payload === void 0 ? void 0 : payload.id)) {
             processedMessageIds.push(payload === null || payload === void 0 ? void 0 : payload.id);
             if ((payload === null || payload === void 0 ? void 0 : payload.type) === 'button_reply') {
                 yield handleButtonReply(payload, phoneNumber, res);
             }
-            if (((_a = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _a === void 0 ? void 0 : _a.text) === 'ग्यापन दिखाएं') {
+            if (((_c = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _c === void 0 ? void 0 : _c.text) === 'ग्यापन दिखाएं') {
                 yield handlePendingGyapanList(payload, res);
             }
-            if (stateManager_1.default.isGyapanInQueue(phoneNumber) && ((_b = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _b === void 0 ? void 0 : _b.url) && ((_c = store_gyapan_url_and_name[phoneNumber]) === null || _c === void 0 ? void 0 : _c.length) === 0) {
+            if (stateManager_1.default.isGyapanInQueue(phoneNumber) && ((_d = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _d === void 0 ? void 0 : _d.url) && ((_e = store_gyapan_url_and_name[phoneNumber]) === null || _e === void 0 ? void 0 : _e.length) === 0) {
                 yield handleDocumentUpload(payload, phoneNumber, res);
             }
         }
@@ -71,9 +75,9 @@ const handleMessageProcessing = (payload, phoneNumber, res) => __awaiter(void 0,
 });
 // Handle button reply logic (Submit, Yes, Resend)
 const handleButtonReply = (payload, phoneNumber, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _d, _e;
+    var _f, _g;
     const id = payload.payload.id;
-    switch ((_d = payload.payload) === null || _d === void 0 ? void 0 : _d.title) {
+    switch ((_f = payload.payload) === null || _f === void 0 ? void 0 : _f.title) {
         case 'Submit':
             yield handleSubmitButton(id, phoneNumber, res);
             break;
@@ -84,27 +88,27 @@ const handleButtonReply = (payload, phoneNumber, res) => __awaiter(void 0, void 
             yield handleResendButton(phoneNumber, res);
             break;
         default:
-            console.log(`Unknown button reply: ${(_e = payload.payload) === null || _e === void 0 ? void 0 : _e.title}`);
+            console.log(`Unknown button reply: ${(_g = payload.payload) === null || _g === void 0 ? void 0 : _g.title}`);
     }
 });
 // Handle 'Submit' button click
 const handleSubmitButton = (id, phoneNumber, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _f, _g;
+    var _h, _j;
     if (!stateManager_1.default.isGyapanInQueue(phoneNumber)) {
         stateManager_1.default.addToCurrentGyapanIdInQueue(phoneNumber, id);
         store_gyapan_url_and_name[phoneNumber] = [];
-        const gyapanId = (_f = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _f === void 0 ? void 0 : _f.split("/")[0];
-        const caseId = (_g = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _g === void 0 ? void 0 : _g.split("/")[1];
+        const gyapanId = (_h = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _h === void 0 ? void 0 : _h.split("/")[0];
+        const caseId = (_j = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _j === void 0 ? void 0 : _j.split("/")[1];
         res.status(200).send(`ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*कृपया उपर्युक्त ज्ञापन का प्रतिवेदन यहां अपलोड करें ।*`);
     }
 });
 // Handle 'Yes' button click
 const handleYesButton = (phoneNumber, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _h, _j, _k;
+    var _k, _l, _m;
     if (stateManager_1.default.isGyapanInQueue(phoneNumber) && store_gyapan_url_and_name[phoneNumber].length != 0) {
-        const gyapanId = (_h = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _h === void 0 ? void 0 : _h.split("/")[0];
-        const caseId = (_j = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _j === void 0 ? void 0 : _j.split("/")[1];
-        const gyapanObjId = (_k = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _k === void 0 ? void 0 : _k.split("/")[2];
+        const gyapanId = (_k = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _k === void 0 ? void 0 : _k.split("/")[0];
+        const caseId = (_l = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _l === void 0 ? void 0 : _l.split("/")[1];
+        const gyapanObjId = (_m = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _m === void 0 ? void 0 : _m.split("/")[2];
         if (gyapanId != "0") {
             yield (0, submitPrativedan_1.submitPrativedan)({
                 gyapanId: gyapanObjId,
@@ -140,9 +144,9 @@ const handlePendingGyapanList = (payload, res) => __awaiter(void 0, void 0, void
 });
 // Handle document upload
 const handleDocumentUpload = (payload, phoneNumber, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _l, _m;
-    const name = (_l = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _l === void 0 ? void 0 : _l.name;
-    const url = (_m = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _m === void 0 ? void 0 : _m.url;
+    var _o, _p;
+    const name = (_o = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _o === void 0 ? void 0 : _o.name;
+    const url = (_p = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _p === void 0 ? void 0 : _p.url;
     store_gyapan_url_and_name[phoneNumber].push(name, url);
     const message = buildConfirmationMessage(phoneNumber, url);
     yield sendWhatsAppMessage(payload === null || payload === void 0 ? void 0 : payload.source, message);
