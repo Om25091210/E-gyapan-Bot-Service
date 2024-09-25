@@ -105,7 +105,7 @@ const handleYesButton = async (phoneNumber: string, res: Response) => {
     const gyapanObjId = stateManager.getCurrentGyapanIdInQueue(phoneNumber)?.split("/")[2];
     
     if(gyapanId != "0"){
-      await markTaskAsCompleted({ gyapanIds: [gyapanId] });
+      
       await submitPrativedan({
         gyapanId: gyapanObjId,
         prativedanUrl: store_gyapan_url_and_name[phoneNumber][1], // [0] for name, [1] for URL

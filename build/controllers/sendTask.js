@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const axios_1 = __importDefault(require("axios"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const markTaskCompleted_1 = require("../services/markTaskCompleted");
 const stateManager_1 = __importDefault(require("./stateManager")); // import the singleton state manager
 dotenv_1.default.config({ path: ".env" });
 const processedMessageIds = [];
@@ -81,6 +82,8 @@ function send_session_msg(id, to, gyapanId, caseId, date_of_task, category, rema
             message: JSON.stringify(message),
             "src.name": sourceName,
         };
+        //Mark the submit template as sent for not sending again.
+        yield (0, markTaskCompleted_1.markTaskAsCompleted)({ gyapanIds: [gyapanId] });
         try {
             const response = yield axios_1.default.post("https://api.gupshup.io/sm/api/v1/msg", postData, axiosConfig);
             return response.data; // Return only the data part of the response
