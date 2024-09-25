@@ -47,6 +47,10 @@ const acknowledgeSandboxStart = (res: Response) => {
 const handleMessageProcessing = async (payload: any, phoneNumber: string, res: Response) => {
   try {
     markAsSeen(payload?.id);
+    console.log("LOGS");
+    console.log(stateManager.isGyapanInQueue(phoneNumber));
+    console.log(store_gyapan_url_and_name[phoneNumber]?.length);
+    console.log(payload?.payload?.url);
     if (!processedMessageIds.includes(payload?.id)) {
       processedMessageIds.push(payload?.id);
       if (payload?.type === 'button_reply') {
