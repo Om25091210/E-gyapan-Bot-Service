@@ -93,7 +93,8 @@ const handleSubmitButton = async (id: string, phoneNumber: string, res: Response
   if (!stateManager.isGyapanInQueue(phoneNumber)) {
     stateManager.addToCurrentGyapanIdInQueue(phoneNumber, id);
     store_gyapan_url_and_name[phoneNumber] = [];
-
+    console.log("Pushed Value");
+    console.log(stateManager.getCurrentGyapanIdInQueue(phoneNumber));
     const gyapanId = stateManager.getCurrentGyapanIdInQueue(phoneNumber)?.split("/")[0];
     const caseId = stateManager.getCurrentGyapanIdInQueue(phoneNumber)?.split("/")[1];
 

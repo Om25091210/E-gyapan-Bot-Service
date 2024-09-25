@@ -97,6 +97,8 @@ const handleSubmitButton = (id, phoneNumber, res) => __awaiter(void 0, void 0, v
     if (!stateManager_1.default.isGyapanInQueue(phoneNumber)) {
         stateManager_1.default.addToCurrentGyapanIdInQueue(phoneNumber, id);
         store_gyapan_url_and_name[phoneNumber] = [];
+        console.log("Pushed Value");
+        console.log(stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber));
         const gyapanId = (_h = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _h === void 0 ? void 0 : _h.split("/")[0];
         const caseId = (_j = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _j === void 0 ? void 0 : _j.split("/")[1];
         res.status(200).send(`ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*कृपया उपर्युक्त ज्ञापन का प्रतिवेदन यहां अपलोड करें ।*`);
