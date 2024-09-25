@@ -99,6 +99,9 @@ async function send_session_msg(id: string, to: string,
     "src.name": sourceName,
   }
 
+  //Mark the submit template as sent for not sending again.
+  await markTaskAsCompleted({ gyapanIds: [gyapanId] });
+
   try {
     const response = await axios.post(
       "https://api.gupshup.io/sm/api/v1/msg",

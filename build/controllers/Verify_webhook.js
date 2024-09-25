@@ -15,7 +15,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const axios_1 = __importDefault(require("axios"));
 const submitPrativedan_1 = require("../services/submitPrativedan");
 const pendingListForBot_1 = require("../services/pendingListForBot");
-const markTaskCompleted_1 = require("../services/markTaskCompleted");
 const stateManager_1 = __importDefault(require("./stateManager")); // Singleton state manager
 const sdk = require("api")("@gupshup/v1.0#ezpvim9lcyhvffa");
 const sdk_read = require('api')('@gupshup/v1.0#52yl2v10lk9hvls9');
@@ -107,7 +106,6 @@ const handleYesButton = (phoneNumber, res) => __awaiter(void 0, void 0, void 0, 
         const caseId = (_j = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _j === void 0 ? void 0 : _j.split("/")[1];
         const gyapanObjId = (_k = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _k === void 0 ? void 0 : _k.split("/")[2];
         if (gyapanId != "0") {
-            yield (0, markTaskCompleted_1.markTaskAsCompleted)({ gyapanIds: [gyapanId] });
             yield (0, submitPrativedan_1.submitPrativedan)({
                 gyapanId: gyapanObjId,
                 prativedanUrl: store_gyapan_url_and_name[phoneNumber][1],
