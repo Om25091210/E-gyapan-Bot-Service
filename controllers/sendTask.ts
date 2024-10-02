@@ -2,8 +2,8 @@ import axios from "axios";
 import dotenv from "dotenv";
 import moment from 'moment-timezone';
 import { Response, Request, NextFunction } from "express";
-import { markTaskAsCompleted } from "../services/markTaskCompleted";
 import stateManager from "./stateManager"; // import the singleton state manager
+import { getState } from "../services/getState";
 
 dotenv.config({ path: ".env" });
 
@@ -19,33 +19,46 @@ const sendTask = async (req: Request, res: Response, next: NextFunction) => {
     //Iterate over each task in the array and process them
     const responses = await Promise.all(tasks.map(async (task: any) => {
       
-      //Check and send 409 status if there is any gyapan flow going on.
-      if (stateManager.isGyapanInQueue(task.phoneNumber)) {
-        return res.status(409).json({ message: "A Gyapan is currently being processed. Please wait." });
-      }
+      await getState(task.phoneNumber).then(async(res_)=>{
+        if(res_.code==200){
+          //console.log(res_.result);
+          const WPSession = res_.result.data.WPSession;
+          const WPprativedanURL = res_.result.data.WPprativedanURL;
+          const WPGyapanId = res_.result.data.WPGyapanId;
+          const WPGyapanObjectId = res_.result.data.WPGyapanObjectId;
 
-      console.log("Session msg", task);
-      if (!processedMessageIds.includes(task.gyapanId)) {
-        //store processed msgs for non repitative msgs.
-        processedMessageIds.push(task.gyapanId);
-        //Send WhatsApp message if not sent previously
-        await send_session_msg(
-          task.id,
-          task.phoneNumber,
-          task.gyapanId,
-          task.caseId,
-          task.deadline,
-          task.category,
-          task.remark,
-          task.attachment,
-          task.tehsil,
-          task.patwari,
-          task.village
-        );
+          //Check and send 409 status if there is any gyapan flow going on.
+          if (WPSession) {
+            return res.status(409).json({ message: "A Gyapan is currently being processed. Please wait." });
+          }
 
-        // Return some result structure that fits your needs
-        return { task_id: task.task_id, message: "Message sent successfully", sent: true };
-      }
+          console.log("Session msg", task);
+          if (!processedMessageIds.includes(task.gyapanId)) {
+            //store processed msgs for non repitative msgs.
+            processedMessageIds.push(task.gyapanId);
+            //Send WhatsApp message if not sent previously
+            await send_session_msg(
+              task.id,
+              task.phoneNumber,
+              task.gyapanId,
+              task.caseId,
+              task.deadline,
+              task.category,
+              task.remark,
+              task.attachment,
+              task.tehsil,
+              task.patwari,
+              task.village
+            );
+
+            // Return some result structure that fits your needs
+            return { task_id: task.task_id, message: "Message sent successfully", sent: true };
+          }
+        }else{
+          console.log("Read State service failed to execute with errors.");
+        }
+      })
+      
     }));
 
     // Return the array of results
@@ -98,9 +111,6 @@ async function send_session_msg(id: string, to: string,
     message: JSON.stringify(message),
     "src.name": sourceName,
   }
-
-  //Mark the submit template as sent for not sending again.
-  await markTaskAsCompleted({ gyapanIds: [gyapanId] });
 
   try {
     const response = await axios.post(
