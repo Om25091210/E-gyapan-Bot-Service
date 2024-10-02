@@ -2,20 +2,24 @@ import { SERVER_URL } from "../global/ServerURL";
 import SubmitTaskResponse from "../interfaces/SubmitTaskResponse";
 
 interface TaskIdObject {
-    gyapanIds: Array<string>;
+    phoneNumber: string,
+    WPSession: boolean,
+    WPGyapanId: string,
+    WPGyapanObjectId: string,
+    WPprativedanURL: string
 }
 
-export const markTaskAsCompleted = async (gyapanIds : TaskIdObject) : Promise<SubmitTaskResponse> =>{
-    const url = `${SERVER_URL}gyapan/markHSM`;
+export const pushState = async (updated_state : TaskIdObject) : Promise<SubmitTaskResponse> =>{
+    const url = `${SERVER_URL}patwari/updatedBotDetails`;
     
     const authOptions = {
         method:'POST',
         headers:{
             "Content-Type":"application/json"
         },
-        body:JSON.stringify(gyapanIds),
+        body:JSON.stringify(updated_state),
     }
-    console.log("authOptions");
+    console.log(url);
     console.log(authOptions);
     const response = await fetch(url,authOptions);
     const code = response.status;
