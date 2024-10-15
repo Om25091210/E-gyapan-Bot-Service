@@ -56,7 +56,7 @@ const handleMessageProcessing = async (payload: any, phoneNumber: string, res: R
     if (!processedMessageIds.includes(payload?.id)) {
        processedMessageIds.push(payload?.id);
        //TODO: Taking state here to check the current state.
-       await getState("9301982112").then(async(res_)=>{
+       await getState(phoneNumber).then(async(res_)=>{
         if(res_.code==200){
           console.log("Extracting values");
           //console.log(res_.result);
