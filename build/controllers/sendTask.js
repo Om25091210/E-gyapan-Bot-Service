@@ -14,33 +14,43 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const axios_1 = __importDefault(require("axios"));
 const dotenv_1 = __importDefault(require("dotenv"));
-const markTaskCompleted_1 = require("../services/markTaskCompleted");
-const stateManager_1 = __importDefault(require("./stateManager")); // import the singleton state manager
+const getState_1 = require("../services/getState");
 dotenv_1.default.config({ path: ".env" });
 const processedMessageIds = [];
 const clientKey = process.env.APIKEY;
 //TODO: submit comming two time.
 const sendTask = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        // Extract body params
         const tasks = req.body; // Assuming req.body is an array of tasks
-        //Iterate over each task in the array and process them
-        const responses = yield Promise.all(tasks.map((task) => __awaiter(void 0, void 0, void 0, function* () {
-            //Check and send 409 status if there is any gyapan flow going on.
-            if (stateManager_1.default.isGyapanInQueue(task.phoneNumber)) {
-                return res.status(409).json({ message: "A Gyapan is currently being processed. Please wait." });
+        // Process each task in parallel and collect results
+        const responses = yield Promise.allSettled(tasks.map((task) => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                const state = yield (0, getState_1.getState)(task.phoneNumber);
+                if (state.code == 200) {
+                    const { WPSession } = state.result.data;
+                    if (WPSession) {
+                        // Collect the 409 error, but do not send a response yet
+                        return { task_id: task.task_id, message: "A Gyapan is currently being processed. Please wait.", status: 409 };
+                    }
+                    if (!processedMessageIds.includes(task.gyapanId)) {
+                        processedMessageIds.push(task.gyapanId);
+                        // Send WhatsApp message
+                        yield send_session_msg(task.id, task.phoneNumber, task.gyapanId, task.caseId, task.deadline, task.category, task.remark, task.attachment, task.tehsil, task.patwari, task.village);
+                        return { task_id: task.task_id, message: "Message sent successfully", status: 200 };
+                    }
+                    return { task_id: task.task_id, message: "Message already sent", status: 200 };
+                }
+                else {
+                    console.log("Read State service failed.");
+                    return { task_id: task.task_id, message: "Failed to get state", status: 500 };
+                }
             }
-            console.log("Session msg", task);
-            if (!processedMessageIds.includes(task.gyapanId)) {
-                //store processed msgs for non repitative msgs.
-                processedMessageIds.push(task.gyapanId);
-                //Send WhatsApp message if not sent previously
-                yield send_session_msg(task.id, task.phoneNumber, task.gyapanId, task.caseId, task.deadline, task.category, task.remark, task.attachment, task.tehsil, task.patwari, task.village);
-                // Return some result structure that fits your needs
-                return { task_id: task.task_id, message: "Message sent successfully", sent: true };
+            catch (error) {
+                console.error("Error processing task:", error);
+                return { task_id: task.task_id, message: "Error in processing", status: 500 };
             }
         })));
-        // Return the array of results
+        // Send the final response after all tasks are processed
         res.status(200).json({ message: "Gyapan processed successfully", data: responses });
     }
     catch (error) {
@@ -82,8 +92,6 @@ function send_session_msg(id, to, gyapanId, caseId, date_of_task, category, rema
             message: JSON.stringify(message),
             "src.name": sourceName,
         };
-        //Mark the submit template as sent for not sending again.
-        yield (0, markTaskCompleted_1.markTaskAsCompleted)({ gyapanIds: [gyapanId] });
         try {
             const response = yield axios_1.default.post("https://api.gupshup.io/sm/api/v1/msg", postData, axiosConfig);
             return response.data; // Return only the data part of the response

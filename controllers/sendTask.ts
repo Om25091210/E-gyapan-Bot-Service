@@ -12,58 +12,48 @@ const clientKey: string = process.env.APIKEY as string;
 
 //TODO: submit comming two time.
 const sendTask = async (req: Request, res: Response, next: NextFunction) => {
-
   try {
-    // Extract body params
     const tasks = req.body;  // Assuming req.body is an array of tasks
-    //Iterate over each task in the array and process them
-    const responses = await Promise.all(tasks.map(async (task: any) => {
-      
-      await getState(task.phoneNumber).then(async(res_)=>{
-        if(res_.code==200){
-          //console.log(res_.result);
-          const WPSession = res_.result.data.WPSession;
-          const WPprativedanURL = res_.result.data.WPprativedanURL;
-          const WPGyapanId = res_.result.data.WPGyapanId;
-          const WPGyapanObjectId = res_.result.data.WPGyapanObjectId;
 
-          //Check and send 409 status if there is any gyapan flow going on.
-          if (WPSession) {
-            return res.status(409).json({ message: "A Gyapan is currently being processed. Please wait." });
+    // Process each task in parallel and collect results
+    const responses = await Promise.allSettled(
+      tasks.map(async (task: any) => {
+        try {
+          const state = await getState(task.phoneNumber);
+          if (state.code == 200) {
+            const { WPSession } = state.result.data;
+            if (WPSession) {
+              // Collect the 409 error, but do not send a response yet
+              return { task_id: task.task_id, message: "A Gyapan is currently being processed. Please wait.", status: 409 };
+            }
+
+            if (!processedMessageIds.includes(task.gyapanId)) {
+              processedMessageIds.push(task.gyapanId);
+
+              // Send WhatsApp message
+              await send_session_msg(
+                task.id, task.phoneNumber, task.gyapanId, task.caseId,
+                task.deadline, task.category, task.remark, task.attachment,
+                task.tehsil, task.patwari, task.village
+              );
+
+              return { task_id: task.task_id, message: "Message sent successfully", status: 200 };
+            }
+
+            return { task_id: task.task_id, message: "Message already sent", status: 200 };
+          } else {
+            console.log("Read State service failed.");
+            return { task_id: task.task_id, message: "Failed to get state", status: 500 };
           }
-
-          console.log("Session msg", task);
-          if (!processedMessageIds.includes(task.gyapanId)) {
-            //store processed msgs for non repitative msgs.
-            processedMessageIds.push(task.gyapanId);
-            //Send WhatsApp message if not sent previously
-            await send_session_msg(
-              task.id,
-              task.phoneNumber,
-              task.gyapanId,
-              task.caseId,
-              task.deadline,
-              task.category,
-              task.remark,
-              task.attachment,
-              task.tehsil,
-              task.patwari,
-              task.village
-            );
-
-            // Return some result structure that fits your needs
-            return { task_id: task.task_id, message: "Message sent successfully", sent: true };
-          }
-        }else{
-          console.log("Read State service failed to execute with errors.");
+        } catch (error) {
+          console.error("Error processing task:", error);
+          return { task_id: task.task_id, message: "Error in processing", status: 500 };
         }
       })
-      
-    }));
+    );
 
-    // Return the array of results
+    // Send the final response after all tasks are processed
     res.status(200).json({ message: "Gyapan processed successfully", data: responses });
-
   } catch (error) {
     console.error("Error in sending tasks:", error);
     next(error); // Pass error to Express error handler

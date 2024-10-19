@@ -10,6 +10,11 @@ interface TaskIdObject {
 }
 
 export const pushState = async (updated_state : TaskIdObject) : Promise<SubmitTaskResponse> =>{
+    
+    if (updated_state.phoneNumber.length === 10 && !updated_state.phoneNumber.startsWith('91')) {
+        updated_state.phoneNumber = `91${updated_state.phoneNumber}`;
+    }
+    
     const url = `${SERVER_URL}patwari/updatedBotDetails`;
     
     const authOptions = {
