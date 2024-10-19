@@ -30,6 +30,7 @@ const axiosConfig = {
 // Main webhook verification function
 const verify = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body.payload;
+  //console.log(payload);
   const phoneNumber = payload?.source;
   
   if (payload && payload.type === "sandbox-start") {
@@ -49,14 +50,13 @@ const acknowledgeSandboxStart = (res: Response) => {
 const handleMessageProcessing = async (payload: any, phoneNumber: string, res: Response) => {
   try {
     markAsSeen(payload?.id);
-    console.log("LOGS");
-    console.log(stateManager.isGyapanInQueue(phoneNumber));
-    console.log(store_gyapan_url_and_name[phoneNumber]?.length);
-    console.log(payload?.payload?.url);
-    if (!processedMessageIds.includes(payload?.id)) {
+    // console.log("LOGS");
+    // console.log(payload?.payload?.url);
+    if (!processedMessageIds.includes(payload?.id) && phoneNumber!=undefined) {
        processedMessageIds.push(payload?.id);
        //TODO: Taking state here to check the current state.
-       await getState("9301982112").then(async(res_)=>{
+       console.log(phoneNumber);
+       await getState(phoneNumber).then(async(res_)=>{
         if(res_.code==200){
           console.log("Extracting values");
           //console.log(res_.result);
@@ -116,7 +116,7 @@ const handleSubmitButton = async (id: string, phoneNumber: string, res: Response
 ) => {
 
   const updated_state= {
-    "phoneNumber": "9301982112",
+    "phoneNumber": phoneNumber,
     "WPSession": false,
     "WPGyapanId": "",
     "WPGyapanObjectId": "",
@@ -142,7 +142,7 @@ const handleSubmitButton = async (id: string, phoneNumber: string, res: Response
     const gyapanObjId = stateManager.getCurrentGyapanIdInQueue(phoneNumber)?.split("/")[2];
 
     const updated_state= {
-      "phoneNumber": "9301982112",
+      "phoneNumber": phoneNumber,
       "WPSession": true,
       "WPGyapanId": `${gyapanId}/${caseId}`,
       "WPGyapanObjectId": gyapanObjId,
@@ -181,7 +181,7 @@ const handleYesButton = async (phoneNumber: string, res: Response,
       await markTaskAsCompleted({ gyapanIds: [gyapanId] });
       
       const updated_state= {
-        "phoneNumber": "9301982112",
+        "phoneNumber": phoneNumber,
         "WPSession": false,
         "WPGyapanId": "",
         "WPGyapanObjectId": "",
@@ -213,7 +213,7 @@ const handleResendButton = async (phoneNumber: string, res: Response,
     store_gyapan_url_and_name[phoneNumber] = []; // Reset stored data
     
     const updated_state= {
-      "phoneNumber": "9301982112",
+      "phoneNumber": phoneNumber,
       "WPSession": true,
       "WPGyapanId": WPGyapanId,
       "WPGyapanObjectId": WPGyapanObjectId,
@@ -234,7 +234,7 @@ const handleResendButton = async (phoneNumber: string, res: Response,
 
 // Handle pending Gyapan list retrieval
 const handlePendingGyapanList = async (payload: any, res: Response) => {
-  const result = await getPendingListForBot(payload.sender.dial_code);
+  const result = await getPendingListForBot(`91${payload.sender.dial_code}`);
   if (result.code === 200 && result.result.data.length === 0) {
     res.status(200).send("No pending Gyapan now!!");
   } else {
@@ -253,13 +253,15 @@ const handleDocumentUpload = async (payload: any, phoneNumber: string, res: Resp
   const caseId = WPGyapanId.split("/")[1];
 
   //store_gyapan_url_and_name[phoneNumber].push(name, url);
+
   const updated_state= {
-    "phoneNumber": "9301982112",
+    "phoneNumber": phoneNumber,
     "WPSession": true,
     "WPGyapanId": WPGyapanId,
     "WPGyapanObjectId": WPGyapanObjectId,
     "WPprativedanURL": url
   }
+  console.log(updated_state);
   //Check CASE ID.
   await pushState(updated_state).then(async(res_)=>{
     if(res_.code==200){

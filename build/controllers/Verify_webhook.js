@@ -15,7 +15,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const axios_1 = __importDefault(require("axios"));
 const submitPrativedan_1 = require("../services/submitPrativedan");
 const pendingListForBot_1 = require("../services/pendingListForBot");
+const markTaskCompleted_1 = require("../services/markTaskCompleted");
 const stateManager_1 = __importDefault(require("./stateManager")); // Singleton state manager
+const getState_1 = require("../services/getState");
+const pushState_1 = require("../services/pushState");
 const sdk = require("api")("@gupshup/v1.0#ezpvim9lcyhvffa");
 const sdk_read = require('api')('@gupshup/v1.0#52yl2v10lk9hvls9');
 require("dotenv").config();
@@ -33,6 +36,7 @@ const axiosConfig = {
 // Main webhook verification function
 const verify = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const payload = req.body.payload;
+    //console.log(payload);
     const phoneNumber = payload === null || payload === void 0 ? void 0 : payload.source;
     if (payload && payload.type === "sandbox-start") {
         acknowledgeSandboxStart(res);
@@ -48,24 +52,40 @@ const acknowledgeSandboxStart = (res) => {
 };
 // Main handler for message processing
 const handleMessageProcessing = (payload, phoneNumber, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c, _d, _e;
     try {
         markAsSeen(payload === null || payload === void 0 ? void 0 : payload.id);
-        console.log("LOGS");
-        console.log(stateManager_1.default.isGyapanInQueue(phoneNumber));
-        console.log((_a = store_gyapan_url_and_name[phoneNumber]) === null || _a === void 0 ? void 0 : _a.length);
-        console.log((_b = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _b === void 0 ? void 0 : _b.url);
-        if (!processedMessageIds.includes(payload === null || payload === void 0 ? void 0 : payload.id)) {
+        // console.log("LOGS");
+        // console.log(payload?.payload?.url);
+        if (!processedMessageIds.includes(payload === null || payload === void 0 ? void 0 : payload.id) && phoneNumber != undefined) {
             processedMessageIds.push(payload === null || payload === void 0 ? void 0 : payload.id);
-            if ((payload === null || payload === void 0 ? void 0 : payload.type) === 'button_reply') {
-                yield handleButtonReply(payload, phoneNumber, res);
-            }
-            if (((_c = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _c === void 0 ? void 0 : _c.text) === 'ग्यापन दिखाएं') {
-                yield handlePendingGyapanList(payload, res);
-            }
-            if (stateManager_1.default.isGyapanInQueue(phoneNumber) && ((_d = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _d === void 0 ? void 0 : _d.url) && ((_e = store_gyapan_url_and_name[phoneNumber]) === null || _e === void 0 ? void 0 : _e.length) === 0) {
-                yield handleDocumentUpload(payload, phoneNumber, res);
-            }
+            //TODO: Taking state here to check the current state.
+            console.log(phoneNumber);
+            yield (0, getState_1.getState)(phoneNumber).then((res_) => __awaiter(void 0, void 0, void 0, function* () {
+                var _a, _b;
+                if (res_.code == 200) {
+                    console.log("Extracting values");
+                    //console.log(res_.result);
+                    const WPSession = res_.result.data.WPSession;
+                    const WPprativedanURL = res_.result.data.WPprativedanURL;
+                    const WPGyapanId = res_.result.data.WPGyapanId;
+                    const WPGyapanObjectId = res_.result.data.WPGyapanObjectId;
+                    if ((payload === null || payload === void 0 ? void 0 : payload.type) === 'button_reply') {
+                        yield handleButtonReply(payload, phoneNumber, res, WPSession, WPprativedanURL, WPGyapanId, WPGyapanObjectId);
+                        console.log("Message sent Successfully!!.");
+                    }
+                    if (((_a = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _a === void 0 ? void 0 : _a.text) === 'ग्यापन दिखाएं') {
+                        yield handlePendingGyapanList(payload, res);
+                    }
+                    //TODO: Hit API and check here about the session.
+                    if (WPSession && ((_b = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _b === void 0 ? void 0 : _b.url) && WPprativedanURL === "") {
+                        console.log("Inside the HandleDocumentUpload");
+                        yield handleDocumentUpload(payload, phoneNumber, res, WPSession, WPprativedanURL, WPGyapanId, WPGyapanObjectId);
+                    }
+                }
+                else {
+                    console.log("Read State service failed to execute with errors.");
+                }
+            }));
         }
     }
     catch (error) {
@@ -74,69 +94,132 @@ const handleMessageProcessing = (payload, phoneNumber, res) => __awaiter(void 0,
     }
 });
 // Handle button reply logic (Submit, Yes, Resend)
-const handleButtonReply = (payload, phoneNumber, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _f, _g;
+const handleButtonReply = (payload, phoneNumber, res, WPSession, WPprativedanURL, WPGyapanId, WPGyapanObjectId) => __awaiter(void 0, void 0, void 0, function* () {
+    var _c, _d;
     const id = payload.payload.id;
-    switch ((_f = payload.payload) === null || _f === void 0 ? void 0 : _f.title) {
+    //TODO: Hit API to check the state and then proceed Whether its/was Yes/No. If its submit then start session.
+    switch ((_c = payload.payload) === null || _c === void 0 ? void 0 : _c.title) {
         case 'Submit':
-            yield handleSubmitButton(id, phoneNumber, res);
+            yield handleSubmitButton(id, phoneNumber, res, WPSession, WPprativedanURL, WPGyapanId, WPGyapanObjectId);
             break;
         case 'हाँ':
-            yield handleYesButton(phoneNumber, res);
+            yield handleYesButton(phoneNumber, res, WPSession, WPprativedanURL, WPGyapanId, WPGyapanObjectId);
             break;
         case 'पुनः भेजें':
-            yield handleResendButton(phoneNumber, res);
+            yield handleResendButton(phoneNumber, res, WPSession, WPprativedanURL, WPGyapanId, WPGyapanObjectId);
             break;
         default:
-            console.log(`Unknown button reply: ${(_g = payload.payload) === null || _g === void 0 ? void 0 : _g.title}`);
+            console.log(`Unknown button reply: ${(_d = payload.payload) === null || _d === void 0 ? void 0 : _d.title}`);
     }
 });
 // Handle 'Submit' button click
-const handleSubmitButton = (id, phoneNumber, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _h, _j;
-    if (!stateManager_1.default.isGyapanInQueue(phoneNumber)) {
+const handleSubmitButton = (id, phoneNumber, res, WPSession, WPprativedanURL, WPGyapanId, WPGyapanObjectId) => __awaiter(void 0, void 0, void 0, function* () {
+    var _e, _f, _g;
+    const updated_state = {
+        "phoneNumber": phoneNumber,
+        "WPSession": false,
+        "WPGyapanId": "",
+        "WPGyapanObjectId": "",
+        "WPprativedanURL": ""
+    };
+    //Check CASE ID.
+    yield (0, pushState_1.pushState)(updated_state).then((res_) => __awaiter(void 0, void 0, void 0, function* () {
+        if (res_.code == 200) {
+            console.log("Reset of values took place before submit.");
+        }
+        else {
+            console.log("Read State service failed to execute with errors.");
+        }
+    }));
+    if (!WPSession && WPprativedanURL === "") {
+        //TODO: Store the gyapan ID here.
         stateManager_1.default.addToCurrentGyapanIdInQueue(phoneNumber, id);
+        //remove
         store_gyapan_url_and_name[phoneNumber] = [];
         console.log("Pushed Value");
-        console.log(stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber));
-        const gyapanId = (_h = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _h === void 0 ? void 0 : _h.split("/")[0];
-        const caseId = (_j = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _j === void 0 ? void 0 : _j.split("/")[1];
-        res.status(200).send(`ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*कृपया उपर्युक्त ज्ञापन का प्रतिवेदन यहां अपलोड करें ।*`);
+        const gyapanId = (_e = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _e === void 0 ? void 0 : _e.split("/")[0];
+        const caseId = (_f = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _f === void 0 ? void 0 : _f.split("/")[1];
+        const gyapanObjId = (_g = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _g === void 0 ? void 0 : _g.split("/")[2];
+        const updated_state = {
+            "phoneNumber": phoneNumber,
+            "WPSession": true,
+            "WPGyapanId": `${gyapanId}/${caseId}`,
+            "WPGyapanObjectId": gyapanObjId,
+            "WPprativedanURL": ""
+        };
+        //Check CASE ID.
+        yield (0, pushState_1.pushState)(updated_state).then((res_) => __awaiter(void 0, void 0, void 0, function* () {
+            if (res_.code == 200) {
+                res.status(200).send(`ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*कृपया उपर्युक्त ज्ञापन का प्रतिवेदन यहां अपलोड करें ।*`);
+                console.log("Message sent Successfully!!.");
+            }
+            else {
+                console.log("Read State service failed to execute with errors.");
+            }
+        }));
     }
 });
 // Handle 'Yes' button click
-const handleYesButton = (phoneNumber, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _k, _l, _m;
-    if (stateManager_1.default.isGyapanInQueue(phoneNumber) && store_gyapan_url_and_name[phoneNumber].length != 0) {
-        const gyapanId = (_k = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _k === void 0 ? void 0 : _k.split("/")[0];
-        const caseId = (_l = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _l === void 0 ? void 0 : _l.split("/")[1];
-        const gyapanObjId = (_m = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _m === void 0 ? void 0 : _m.split("/")[2];
-        if (gyapanId != "0") {
+const handleYesButton = (phoneNumber, res, WPSession, WPprativedanURL, WPGyapanId, WPGyapanObjectId) => __awaiter(void 0, void 0, void 0, function* () {
+    if (WPGyapanId && WPprativedanURL) {
+        const gyapanId = WPGyapanId === null || WPGyapanId === void 0 ? void 0 : WPGyapanId.split("/")[0];
+        const caseId = WPGyapanId === null || WPGyapanId === void 0 ? void 0 : WPGyapanId.split("/")[1];
+        if (gyapanId != "") {
             yield (0, submitPrativedan_1.submitPrativedan)({
-                gyapanId: gyapanObjId,
-                prativedanUrl: store_gyapan_url_and_name[phoneNumber][1],
+                gyapanId: WPGyapanObjectId,
+                prativedanUrl: WPprativedanURL,
                 submittedAt: new Date()
             });
-            stateManager_1.default.clearCurrentGyapanIdInQueue(phoneNumber);
-            store_gyapan_url_and_name[phoneNumber] = [];
-            res.status(200).send(`ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*प्रतिवेदन सफलतापूर्वक सबमिट किया गया।*`);
+            //Mark the submit template as sent for not sending again.
+            yield (0, markTaskCompleted_1.markTaskAsCompleted)({ gyapanIds: [gyapanId] });
+            const updated_state = {
+                "phoneNumber": phoneNumber,
+                "WPSession": false,
+                "WPGyapanId": "",
+                "WPGyapanObjectId": "",
+                "WPprativedanURL": ""
+            };
+            //Check CASE ID.
+            yield (0, pushState_1.pushState)(updated_state).then((res_) => __awaiter(void 0, void 0, void 0, function* () {
+                if (res_.code == 200) {
+                    res.status(200).send(`ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*प्रतिवेदन सफलतापूर्वक सबमिट किया गया।*`);
+                    console.log("Reset of values done for yes.");
+                }
+                else {
+                    console.log("Read State service failed to execute with errors.");
+                }
+            }));
         }
     }
 });
 // Handle 'Resend' button click
-const handleResendButton = (phoneNumber, res) => {
-    var _a, _b;
-    const gyapanId = (_a = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _a === void 0 ? void 0 : _a.split("/")[0];
-    const caseId = (_b = stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)) === null || _b === void 0 ? void 0 : _b.split("/")[1];
-    if (gyapanId != "0") {
+const handleResendButton = (phoneNumber, res, WPSession, WPprativedanURL, WPGyapanId, WPGyapanObjectId) => __awaiter(void 0, void 0, void 0, function* () {
+    const gyapanId = WPGyapanId === null || WPGyapanId === void 0 ? void 0 : WPGyapanId.split("/")[0];
+    const caseId = WPGyapanId === null || WPGyapanId === void 0 ? void 0 : WPGyapanId.split("/")[1];
+    if (gyapanId != "") {
         store_gyapan_url_and_name[phoneNumber] = []; // Reset stored data
-        console.log(`store_gyapan_url_and_name reset for ${phoneNumber}`);
-        res.status(200).send(`ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*कृपया उपर्युक्त ज्ञापन का प्रतिवेदन यहां अपलोड करें ।*`);
+        const updated_state = {
+            "phoneNumber": phoneNumber,
+            "WPSession": true,
+            "WPGyapanId": WPGyapanId,
+            "WPGyapanObjectId": WPGyapanObjectId,
+            "WPprativedanURL": ""
+        };
+        //Check CASE ID.
+        yield (0, pushState_1.pushState)(updated_state).then((res_) => __awaiter(void 0, void 0, void 0, function* () {
+            if (res_.code == 200) {
+                res.status(200).send(`ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*कृपया उपर्युक्त ज्ञापन का प्रतिवेदन यहां अपलोड करें ।*`);
+                console.log("Reset of values done for no.");
+            }
+            else {
+                console.log("Read State service failed to execute with errors.");
+            }
+        }));
     }
-};
+});
 // Handle pending Gyapan list retrieval
 const handlePendingGyapanList = (payload, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const result = yield (0, pendingListForBot_1.getPendingListForBot)(payload.sender.dial_code);
+    const result = yield (0, pendingListForBot_1.getPendingListForBot)(`91${payload.sender.dial_code}`);
     if (result.code === 200 && result.result.data.length === 0) {
         res.status(200).send("No pending Gyapan now!!");
     }
@@ -145,26 +228,46 @@ const handlePendingGyapanList = (payload, res) => __awaiter(void 0, void 0, void
     }
 });
 // Handle document upload
-const handleDocumentUpload = (payload, phoneNumber, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _o, _p;
-    const name = (_o = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _o === void 0 ? void 0 : _o.name;
-    const url = (_p = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _p === void 0 ? void 0 : _p.url;
-    store_gyapan_url_and_name[phoneNumber].push(name, url);
-    const message = buildConfirmationMessage(phoneNumber, url);
+const handleDocumentUpload = (payload, phoneNumber, res, WPSession, WPprativedanURL, WPGyapanId, WPGyapanObjectId) => __awaiter(void 0, void 0, void 0, function* () {
+    var _h, _j;
+    const name = (_h = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _h === void 0 ? void 0 : _h.name;
+    const url = (_j = payload === null || payload === void 0 ? void 0 : payload.payload) === null || _j === void 0 ? void 0 : _j.url;
+    const gyapanId = WPGyapanId.split("/")[0];
+    const caseId = WPGyapanId.split("/")[1];
+    //store_gyapan_url_and_name[phoneNumber].push(name, url);
+    const updated_state = {
+        "phoneNumber": phoneNumber,
+        "WPSession": true,
+        "WPGyapanId": WPGyapanId,
+        "WPGyapanObjectId": WPGyapanObjectId,
+        "WPprativedanURL": url
+    };
+    console.log(updated_state);
+    //Check CASE ID.
+    yield (0, pushState_1.pushState)(updated_state).then((res_) => __awaiter(void 0, void 0, void 0, function* () {
+        if (res_.code == 200) {
+            console.log("Saved URL Successfully.");
+        }
+        else {
+            console.log("Read State service failed to execute with errors.");
+        }
+    }));
+    console.log("Phone - ", phoneNumber);
+    console.log("url - ", url);
+    console.log("to - ", payload === null || payload === void 0 ? void 0 : payload.source);
+    const message = buildConfirmationMessage(phoneNumber, url, WPGyapanId, WPGyapanObjectId);
     yield sendWhatsAppMessage(payload === null || payload === void 0 ? void 0 : payload.source, message);
 });
 // Build a message to confirm document upload
-const buildConfirmationMessage = (phoneNumber, url) => {
+const buildConfirmationMessage = (phoneNumber, url, WPGyapanId, WPGyapanObjectId) => {
     return {
         content: {
-            type: "file",
-            url: url,
+            type: "text",
             text: "मैं इस दस्तावेज़ को भेजने की पुष्टि करता हूँ ?",
-            filename: "PDF file",
-            caption: `${stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)}`,
+            caption: `${WPGyapanId}`,
         },
         type: "quick_reply",
-        msgid: `${stateManager_1.default.getCurrentGyapanIdInQueue(phoneNumber)}`,
+        msgid: `${WPGyapanObjectId}`,
         options: [{ type: "text", title: "हाँ" }, { type: "text", title: "पुनः भेजें" }]
     };
 };
@@ -172,6 +275,9 @@ const buildConfirmationMessage = (phoneNumber, url) => {
 const sendWhatsAppMessage = (to, message) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const response = yield axios_1.default.post("https://api.gupshup.io/sm/api/v1/msg", { channel: "whatsapp", source: "919399504804", destination: to, message: JSON.stringify(message), "src.name": sourceName }, axiosConfig);
+        console.log("HERERERE");
+        console.log(response.headers);
+        console.log(response.data);
         return response.data;
     }
     catch (error) {

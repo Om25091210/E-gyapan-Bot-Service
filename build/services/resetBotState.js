@@ -9,23 +9,21 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.markTaskAsCompleted = void 0;
+exports.getState = void 0;
 const ServerURL_1 = require("../global/ServerURL");
-const markTaskAsCompleted = (gyapanIds) => __awaiter(void 0, void 0, void 0, function* () {
-    const url = `${ServerURL_1.SERVER_URL}gyapan/markHSM`;
+const getState = (phone_no) => __awaiter(void 0, void 0, void 0, function* () {
+    // * // Will send the whatsapp msgs for pending task from App backend. //
+    const url = `${ServerURL_1.SERVER_URL}patwari/getBotDetails/${phone_no}`;
     const authOptions = {
-        method: 'POST',
+        method: 'GET',
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify(gyapanIds),
     };
-    console.log("authOptions");
-    console.log(authOptions);
+    console.log(url);
     const response = yield fetch(url, authOptions);
     const code = response.status;
     const result = yield response.json();
-    console.log(result);
     return { code, result };
 });
-exports.markTaskAsCompleted = markTaskAsCompleted;
+exports.getState = getState;

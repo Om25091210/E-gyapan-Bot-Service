@@ -9,18 +9,21 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.markTaskAsCompleted = void 0;
+exports.pushState = void 0;
 const ServerURL_1 = require("../global/ServerURL");
-const markTaskAsCompleted = (gyapanIds) => __awaiter(void 0, void 0, void 0, function* () {
-    const url = `${ServerURL_1.SERVER_URL}gyapan/markHSM`;
+const pushState = (updated_state) => __awaiter(void 0, void 0, void 0, function* () {
+    if (updated_state.phoneNumber.length === 10 && !updated_state.phoneNumber.startsWith('91')) {
+        updated_state.phoneNumber = `91${updated_state.phoneNumber}`;
+    }
+    const url = `${ServerURL_1.SERVER_URL}patwari/updatedBotDetails`;
     const authOptions = {
         method: 'POST',
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify(gyapanIds),
+        body: JSON.stringify(updated_state),
     };
-    console.log("authOptions");
+    console.log(url);
     console.log(authOptions);
     const response = yield fetch(url, authOptions);
     const code = response.status;
@@ -28,4 +31,4 @@ const markTaskAsCompleted = (gyapanIds) => __awaiter(void 0, void 0, void 0, fun
     console.log(result);
     return { code, result };
 });
-exports.markTaskAsCompleted = markTaskAsCompleted;
+exports.pushState = pushState;
