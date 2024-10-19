@@ -14,6 +14,11 @@ app.use(express.urlencoded({ extended:false }));
 //** Takes care of JSON data */
 app.use(express.json());
 
+app.get('/test', async (req, res) => {
+  console.log("Hi running successfully");
+  return res.send({"message" : "running Successfully"});
+});
+
 //** Routes */
 app.use('/', routes);
 
