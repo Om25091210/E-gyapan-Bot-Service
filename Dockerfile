@@ -13,7 +13,7 @@ COPY package*.json ./
 COPY . .
 
 # Compile TypeScript to JavaScript (if needed)
-RUN npm run build
+#RUN npm run build
 
 # Expose the port your app runs on
 EXPOSE 5000
