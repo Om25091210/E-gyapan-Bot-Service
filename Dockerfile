@@ -7,13 +7,13 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-#RUN npm install
+RUN npm install
 
 # Copy the rest of the app's source code
 COPY . .
 
 # Compile TypeScript to JavaScript (if needed)
-#RUN npm run build
+RUN npm run build
 
 # Expose the port your app runs on
 EXPOSE 5000
