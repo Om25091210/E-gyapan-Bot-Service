@@ -19,4 +19,4 @@ COPY . .
 EXPOSE 5000
 
 # Use CMD to specify the default startup command
-CMD ["npm", "run", "dev"]
+CMD ["npm", "install"]
