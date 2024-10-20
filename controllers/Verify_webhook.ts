@@ -32,7 +32,7 @@ const verify = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body.payload;
   //console.log(payload);
   const phoneNumber = payload?.source;
-  
+  //TODO: To change the flag of pendingHSM to true once flow is done.
   if (payload && payload.type === "sandbox-start") {
     acknowledgeSandboxStart(res);
   } else {
