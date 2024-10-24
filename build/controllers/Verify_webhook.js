@@ -38,6 +38,7 @@ const verify = (req, res, next) => __awaiter(void 0, void 0, void 0, function* (
     const payload = req.body.payload;
     //console.log(payload);
     const phoneNumber = payload === null || payload === void 0 ? void 0 : payload.source;
+    //TODO: To change the flag of pendingHSM to true once flow is done.
     if (payload && payload.type === "sandbox-start") {
         acknowledgeSandboxStart(res);
     }
