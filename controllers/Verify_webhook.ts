@@ -152,6 +152,8 @@ const handleSubmitButton = async (id: string, phoneNumber: string, res: Response
     await pushState(updated_state).then(async(res_)=>{
       if(res_.code==200){
        res.status(200).send(`ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*कृपया उपर्युक्त ज्ञापन का प्रतिवेदन यहां अपलोड करें ।*`);
+       // Reset the Gyapan ID for the specific phone number
+       stateManager.clearCurrentGyapanIdInQueue(phoneNumber);  // This will clear the session for the phone number
        console.log("Message sent Successfully!!.");
       }else{
         console.log("Read State service failed to execute with errors.");
