@@ -30,7 +30,7 @@ const axiosConfig = {
 // Main webhook verification function
 const verify = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body.payload;
-  //console.log(payload);
+  //console.log(payload.payload.text);
   const phoneNumber = payload?.source;
   //TODO: To change the flag of pendingHSM to true once flow is done.
   if (payload && payload.type === "sandbox-start") {
@@ -56,32 +56,39 @@ const handleMessageProcessing = async (payload: any, phoneNumber: string, res: R
        processedMessageIds.push(payload?.id);
        //TODO: Taking state here to check the current state.
        console.log(phoneNumber);
-       await getState(phoneNumber).then(async(res_)=>{
-        if(res_.code==200){
-          console.log("Extracting values");
-          //console.log(res_.result);
-          const WPSession = res_.result.data.WPSession;
-          const WPprativedanURL = res_.result.data.WPprativedanURL;
-          const WPGyapanId = res_.result.data.WPGyapanId;
-          const WPGyapanObjectId = res_.result.data.WPGyapanObjectId;
-
-          if (payload?.type === 'button_reply') {
-            await handleButtonReply(payload, phoneNumber, res, WPSession, WPprativedanURL, WPGyapanId, WPGyapanObjectId);
-            console.log("Message sent Successfully!!.");  
+       const greetings = ["hi", "hii", "hello"];
+       if (greetings.includes(payload.payload?.text?.toLowerCase())) {
+        await resetDBDetails(phoneNumber);
+        //Send Pending List once reset.
+        await handlePendingGyapanList(payload, res);
+       }
+       else{
+        await getState(phoneNumber).then(async(res_)=>{
+          if(res_.code==200){
+            console.log("Extracting values");
+            //console.log(res_.result);
+            const WPSession = res_.result.data.WPSession;
+            const WPprativedanURL = res_.result.data.WPprativedanURL;
+            const WPGyapanId = res_.result.data.WPGyapanId;
+            const WPGyapanObjectId = res_.result.data.WPGyapanObjectId;
+  
+            if (payload?.type === 'button_reply') {
+              await handleButtonReply(payload, phoneNumber, res, WPSession, WPprativedanURL, WPGyapanId, WPGyapanObjectId);
+              console.log("Message sent Successfully!!.");  
+            }
+            if (payload?.payload?.text === 'ग्यापन दिखाएं') {
+              await handlePendingGyapanList(payload, res);
+            }
+            //TODO: Hit API and check here about the session.
+            if (WPSession && payload?.payload?.url && WPprativedanURL === "") {
+              console.log("Inside the HandleDocumentUpload");
+              await handleDocumentUpload(payload, phoneNumber, res, WPSession, WPprativedanURL, WPGyapanId, WPGyapanObjectId);
+            }
+          }else{
+            console.log("Read State service failed to execute with errors.");
           }
-          if (payload?.payload?.text === 'ग्यापन दिखाएं') {
-            await handlePendingGyapanList(payload, res);
-          }
-          //TODO: Hit API and check here about the session.
-          if (WPSession && payload?.payload?.url && WPprativedanURL === "") {
-            console.log("Inside the HandleDocumentUpload");
-            await handleDocumentUpload(payload, phoneNumber, res, WPSession, WPprativedanURL, WPGyapanId, WPGyapanObjectId);
-          }
-        }else{
-          console.log("Read State service failed to execute with errors.");
-        }
-      })
-      
+        })
+       }
     }
   } catch (error) {
     console.error("Error processing inbound message:", error);
@@ -89,6 +96,23 @@ const handleMessageProcessing = async (payload: any, phoneNumber: string, res: R
   }
 };
 
+const resetDBDetails = async (phoneNumber: string) =>{
+  const updated_state= {
+    "phoneNumber": phoneNumber,
+    "WPSession": false,
+    "WPGyapanId": "",
+    "WPGyapanObjectId": "",
+    "WPprativedanURL": ""
+  }
+  //Check CASE ID.
+  await pushState(updated_state).then(async(res_)=>{
+    if(res_.code==200){
+      console.log("Reset of values took place before submit.");
+    }else{
+      console.log("Read State service failed to execute with errors.");
+    }
+  })
+}
 // Handle button reply logic (Submit, Yes, Resend)
 const handleButtonReply = async (payload: any, phoneNumber: string, res: Response,
                              WPSession: string, WPprativedanURL: string, WPGyapanId:string,
@@ -114,22 +138,8 @@ const handleButtonReply = async (payload: any, phoneNumber: string, res: Respons
 const handleSubmitButton = async (id: string, phoneNumber: string, res: Response,
   WPSession: string, WPprativedanURL: string, WPGyapanId: string, WPGyapanObjectId: string
 ) => {
-
-  const updated_state= {
-    "phoneNumber": phoneNumber,
-    "WPSession": false,
-    "WPGyapanId": "",
-    "WPGyapanObjectId": "",
-    "WPprativedanURL": ""
-  }
-  //Check CASE ID.
-  await pushState(updated_state).then(async(res_)=>{
-    if(res_.code==200){
-      console.log("Reset of values took place before submit.");
-    }else{
-      console.log("Read State service failed to execute with errors.");
-    }
-  })
+  //reset Db details.
+  await resetDBDetails(phoneNumber);
 
   if (!WPSession && WPprativedanURL === "") {
     //TODO: Store the gyapan ID here.
