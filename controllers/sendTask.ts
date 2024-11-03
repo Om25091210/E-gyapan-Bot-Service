@@ -75,20 +75,39 @@ async function send_session_msg(id: string, to: string,
     },
   };
   const formattedDate = formatTaskDate(date_of_task);
-
+  console.log("url");
+  console.log(url);
+  console.log( url?.includes("png"));
   let message;
-  message={
-    "content":{
-      "type":"file",
-      "url":url,
-      "text":`पटवारी नाम : *${patwari}*\nज्ञापन क्रमांक : *${gyapanId}*\nकेस क्रमांक : *${caseId}*\nतहसील : *${tehsil}*\nग्राम : *${village}*\nकार्य प्रकार : *${category}*\nअंतिम जमा तिथि : *${formattedDate}*\n\nकृपया तय समय सीमा के भीतर प्रतिवेदन जमा करें  \n\nरिमार्क : *${remark}*`,
-      "filename":"PDF file",
-      "caption": `${formattedDate}`,
-    },
-    "type": "quick_reply",
-    "msgid": `${gyapanId}/${caseId}/${id}`,
-    "options": [{ "type": "text", "title": "Submit" }]
+  if(url?.includes("pdf")){
+    message={
+      "content":{
+        "type":"file",
+        "url":url,
+        "text":`पटवारी नाम : *${patwari}*\nज्ञापन क्रमांक : *${gyapanId}*\nकेस क्रमांक : *${caseId}*\nतहसील : *${tehsil}*\nग्राम : *${village}*\nकार्य प्रकार : *${category}*\nअंतिम जमा तिथि : *${formattedDate}*\n\nकृपया तय समय सीमा के भीतर प्रतिवेदन जमा करें  \n\nरिमार्क : *${remark}*`,
+        "filename":"PDF file",
+        "caption": `${formattedDate}`,
+      },
+      "type": "quick_reply",
+      "msgid": `${gyapanId}/${caseId}/${id}`,
+      "options": [{ "type": "text", "title": "Submit" }]
+    }
+  }else if(url?.includes("jpg") || url?.includes("png") || url?.includes("jpeg")){
+    message={
+      "content":{
+        "type":"image",
+        "url":url,
+        "text":`पटवारी नाम : *${patwari}*\nज्ञापन क्रमांक : *${gyapanId}*\nकेस क्रमांक : *${caseId}*\nतहसील : *${tehsil}*\nग्राम : *${village}*\nकार्य प्रकार : *${category}*\nअंतिम जमा तिथि : *${formattedDate}*\n\nकृपया तय समय सीमा के भीतर प्रतिवेदन जमा करें  \n\nरिमार्क : *${remark}*`,
+        "filename":"PDF file",
+        "caption": `${formattedDate}`,
+      },
+      "type": "quick_reply",
+      "msgid": `${gyapanId}/${caseId}/${id}`,
+      "options": [{ "type": "text", "title": "Submit" }]
+    }
   }
+  
+  
 
   if (to.length === 10) {
       to = `91${to}`;
