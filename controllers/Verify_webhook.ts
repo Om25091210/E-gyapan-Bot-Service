@@ -50,6 +50,7 @@ const acknowledgeSandboxStart = (res: Response) => {
 const handleMessageProcessing = async (payload: any, phoneNumber: string, res: Response) => {
   try {
     markAsSeen(payload?.id);
+    res.status(200).send("");
     // console.log("LOGS");
     // console.log(payload?.payload?.url);
     if (!processedMessageIds.includes(payload?.id) && phoneNumber!=undefined) {
@@ -60,7 +61,7 @@ const handleMessageProcessing = async (payload: any, phoneNumber: string, res: R
        if (greetings.includes(payload.payload?.text?.toLowerCase())) {
         await resetDBDetails(phoneNumber);
         //Send Pending List once reset.
-        await handlePendingGyapanList(payload, res);
+        await handlePendingGyapanList(payload, res, phoneNumber);
        }
        else{
         await getState(phoneNumber).then(async(res_)=>{
@@ -77,7 +78,7 @@ const handleMessageProcessing = async (payload: any, phoneNumber: string, res: R
               console.log("Message sent Successfully!!.");  
             }
             if (payload?.payload?.text === 'ग्यापन दिखाएं') {
-              await handlePendingGyapanList(payload, res);
+              await handlePendingGyapanList(payload, res,phoneNumber);
             }
             //TODO: Hit API and check here about the session.
             if (WPSession && payload?.payload?.url && WPprativedanURL === "") {
@@ -146,7 +147,7 @@ const handleSubmitButton = async (id: string, phoneNumber: string, res: Response
     stateManager.addToCurrentGyapanIdInQueue(phoneNumber, id);
     //remove
     store_gyapan_url_and_name[phoneNumber] = [];
-    console.log("Pushed Value");
+    console.log("Pushed Value!!!!!");
     const gyapanId = stateManager.getCurrentGyapanIdInQueue(phoneNumber)?.split("/")[0];
     const caseId = stateManager.getCurrentGyapanIdInQueue(phoneNumber)?.split("/")[1];
     const gyapanObjId = stateManager.getCurrentGyapanIdInQueue(phoneNumber)?.split("/")[2];
@@ -160,8 +161,15 @@ const handleSubmitButton = async (id: string, phoneNumber: string, res: Response
     }
     //Check CASE ID.
     await pushState(updated_state).then(async(res_)=>{
+      console.log("Pushed Value twice here!!!!!");
       if(res_.code==200){
-       res.status(200).send(`ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*कृपया उपर्युक्त ज्ञापन का प्रतिवेदन यहां अपलोड करें ।*`);
+       console.log("Pushed Value thrice here!!!!!");
+       const message = `ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*कृपया उपर्युक्त ज्ञापन का प्रतिवेदन यहां अपलोड करें ।*`;
+       await sendWhatsAppMessage(phoneNumber, {
+        type: "text",
+        text: message
+       });
+       //res.status(200).send(`ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*कृपया उपर्युक्त ज्ञापन का प्रतिवेदन यहां अपलोड करें ।*`);
        // Reset the Gyapan ID for the specific phone number
        stateManager.clearCurrentGyapanIdInQueue(phoneNumber);  // This will clear the session for the phone number
        console.log("Message sent Successfully!!.");
@@ -202,7 +210,12 @@ const handleYesButton = async (phoneNumber: string, res: Response,
       //Check CASE ID.
       await pushState(updated_state).then(async(res_)=>{
         if(res_.code==200){
-          res.status(200).send(`ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*प्रतिवेदन सफलतापूर्वक सबमिट किया गया।*`);
+          //res.status(200).send(`ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*प्रतिवेदन सफलतापूर्वक सबमिट किया गया।*`);
+          const message = `ज्ञापन क्रमांक :- *${gyapanId}*\n\nकेस क्रमांक :- *${caseId}*\n\n*प्रतिवेदन सफलतापूर्वक सबमिट किया गया।*`;
+          await sendWhatsAppMessage(phoneNumber,  {
+            type: "text",
+            text: message
+          });
           console.log("Reset of values done for yes.");
         }else{
           console.log("Read State service failed to execute with errors.");
@@ -234,7 +247,12 @@ const handleResendButton = async (phoneNumber: string, res: Response,
     //Check CASE ID.
     await pushState(updated_state).then(async(res_)=>{
       if(res_.code==200){
-        res.status(200).send(`ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*कृपया उपर्युक्त ज्ञापन का प्रतिवेदन यहां अपलोड करें ।*`);
+        const message = `ज्ञापन क्रमांक :- *${gyapanId}*\n\nकेस क्रमांक :- *${caseId}*\n\n*कृपया उपर्युक्त ज्ञापन का प्रतिवेदन यहां अपलोड करें ।*`;
+        await sendWhatsAppMessage(phoneNumber,  {
+            type: "text",
+            text: message
+          });
+        //res.status(200).send(`ज्ञापन क्रमांक :- *${gyapanId}*\nकेस क्रमांक :- *${caseId}*\n\n*कृपया उपर्युक्त ज्ञापन का प्रतिवेदन यहां अपलोड करें ।*`);
         console.log("Reset of values done for no.");
       }else{
         console.log("Read State service failed to execute with errors.");
@@ -245,10 +263,12 @@ const handleResendButton = async (phoneNumber: string, res: Response,
 };
 
 // Handle pending Gyapan list retrieval
-const handlePendingGyapanList = async (payload: any, res: Response) => {
+const handlePendingGyapanList = async (payload: any, res: Response, phoneNumber: string) => {
   const result = await getPendingListForBot(`91${payload.sender.dial_code}`);
   if (result.code === 200 && result.result.data.length === 0) {
-    res.status(200).send("No pending Gyapan now!!");
+    //res.status(200).send("No pending Gyapan now!!");
+    const message = `अब कोई लंबित ज्ञान नहीं है!!अब कोई लंबित ज्ञान नहीं है!!`;
+    await sendWhatsAppMessage(phoneNumber, message);
   } else {
     console.log("Failed to get pending tasks or tasks found");
   }
