@@ -61,7 +61,7 @@ const handleMessageProcessing = async (payload: any, phoneNumber: string, res: R
        if (greetings.includes(payload.payload?.text?.toLowerCase())) {
         await resetDBDetails(phoneNumber);
         //Send Pending List once reset.
-        await handlePendingGyapanList(payload, res, phoneNumber);
+        await handlePendingGyapanList(payload, res, phoneNumber, payload.payload?.text?.toLowerCase());
        }
        else{
         await getState(phoneNumber).then(async(res_)=>{
@@ -78,7 +78,7 @@ const handleMessageProcessing = async (payload: any, phoneNumber: string, res: R
               console.log("Message sent Successfully!!.");  
             }
             if (payload?.payload?.text === 'ग्यापन दिखाएं') {
-              await handlePendingGyapanList(payload, res,phoneNumber);
+              await handlePendingGyapanList(payload, res,phoneNumber, "");
             }
             //TODO: Hit API and check here about the session.
             if (WPSession && payload?.payload?.url && WPprativedanURL === "") {
@@ -263,11 +263,11 @@ const handleResendButton = async (phoneNumber: string, res: Response,
 };
 
 // Handle pending Gyapan list retrieval
-const handlePendingGyapanList = async (payload: any, res: Response, phoneNumber: string) => {
-  const result = await getPendingListForBot(`91${payload.sender.dial_code}`);
+const handlePendingGyapanList = async (payload: any, res: Response, phoneNumber: string, msg: string) => {
+  const result = await getPendingListForBot(`91${payload.sender.dial_code}`, msg);
   if (result.code === 200 && result.result.data.length === 0) {
     //res.status(200).send("No pending Gyapan now!!");
-    const message = `अब कोई लंबित ज्ञान नहीं है!!अब कोई लंबित ज्ञान नहीं है!!`;
+    const message = `अब कोई लंबित ज्ञापन नहीं है!!अब कोई लंबित ज्ञापन नहीं है!!`;
     await sendWhatsAppMessage(phoneNumber, message);
   } else {
     console.log("Failed to get pending tasks or tasks found");
