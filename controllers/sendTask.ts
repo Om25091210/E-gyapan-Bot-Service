@@ -9,6 +9,7 @@ dotenv.config({ path: ".env" });
 
 const processedMessageIds: string[] = [];
 const clientKey: string = process.env.APIKEY as string;
+const greetings = ["hi", "hii", "hello"];
 
 //TODO: submit comming two time.
 const sendTask = async (req: Request, res: Response, next: NextFunction) => {
@@ -23,11 +24,11 @@ const sendTask = async (req: Request, res: Response, next: NextFunction) => {
           if (state.code == 200) {
             const { WPSession } = state.result.data;
             if (WPSession) {
-              // Collect the 409 error, but do not send a response yet
+              // Collect the 409 error, but do not send a response yet 
               return { task_id: task.task_id, message: "A Gyapan is currently being processed. Please wait.", status: 409 };
             }
 
-            if (!processedMessageIds.includes(task.gyapanId)) {
+            if (!processedMessageIds.includes(task.gyapanId) || greetings.includes(task.message)) {
               processedMessageIds.push(task.gyapanId);
 
               // Send WhatsApp message
