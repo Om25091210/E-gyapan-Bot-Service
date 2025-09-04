@@ -28,7 +28,7 @@ const sendTask = async (req: Request, res: Response, next: NextFunction) => {
               return { task_id: task.task_id, message: "A Gyapan is currently being processed. Please wait.", status: 409 };
             }
 
-            if (!processedMessageIds.includes(task.gyapanId) || greetings.includes(task.message)) {
+            if (!processedMessageIds.includes(task.gyapanId) || greetings.includes(task.message.toLowerCase())) {
               processedMessageIds.push(task.gyapanId);
 
               // Send WhatsApp message
