@@ -78,7 +78,7 @@ const handleMessageProcessing = async (payload: any, phoneNumber: string, res: R
               console.log("Message sent Successfully!!.");  
             }
             if (payload?.payload?.text === 'ग्यापन दिखाएं') {
-              await handlePendingGyapanList(payload, res,phoneNumber, "");
+              await handlePendingGyapanList(payload, res,phoneNumber, "text");
             }
             //TODO: Hit API and check here about the session.
             if (WPSession && payload?.payload?.url && WPprativedanURL === "") {
