@@ -9,7 +9,7 @@ dotenv.config({ path: ".env" });
 
 const processedMessageIds: string[] = [];
 const clientKey: string = process.env.APIKEY as string;
-const greetings = ["hi", "hii", "hello"];
+const greetings = ["hi", "hii", "hello", "text"];
 
 //TODO: submit comming two time.
 const sendTask = async (req: Request, res: Response, next: NextFunction) => {
