@@ -8,11 +8,12 @@ const app: Express = express();
 //**Logging*/
 app.use(morgan('dev'));
 
-//** Parse the request */
-app.use(express.urlencoded({ extended:false }));
+// //** Parse the request */
+// app.use(express.urlencoded({ extended:false }));
 
 //** Takes care of JSON data */
-app.use(express.json());
+app.use(express.json({ limit: "5mb" })); // or larger if you expect big payloads
+app.use(express.urlencoded({ extended: true }));
 
 app.get('/test', async (req, res) => {
   console.log("Hi running successfully");
